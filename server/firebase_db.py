@@ -12,6 +12,7 @@ def init_firebase(credentials_path: str = None, credentials_dict: dict = None):
     Usa siempre el path al archivo JSON (mas confiable).
     Retorna None si falla (el servidor funcionará sin persistencia).
     """
+
     try:
         print(f"[Firebase] Cargando credenciales de: {credentials_path}", flush=True)
 
@@ -26,14 +27,23 @@ def init_firebase(credentials_path: str = None, credentials_dict: dict = None):
             raw = f.read()
         data = __import__('json').loads(raw)
         pk = data.get('private_key', '')
-        print(f"[Firebase] JSON OK: project={data.get('project_id','?')}, "
-              f"client_email={data.get('client_email','?')[:30]}...", flush=True)
-          print(f"[Firebase] private_key: {len(pk)} chars, "
-              f"starts={repr(pk[:27])}, ends={repr(pk[-27:])}", flush=True)
-          _has_real_nl = "\n" in pk
-          _has_escaped = "\\n" in pk
-          print(f"[Firebase] private_key real_newlines={_has_real_nl}, "
-              f"escaped_newlines={_has_escaped}", flush=True)
+        print(
+            f"[Firebase] JSON OK: project={data.get('project_id','?')}, "
+            f"client_email={data.get('client_email','?')[:30]}...",
+            flush=True,
+        )
+        print(
+            f"[Firebase] private_key: {len(pk)} chars, "
+            f"starts={repr(pk[:27])}, ends={repr(pk[-27:])}",
+            flush=True,
+        )
+        _has_real_nl = "\n" in pk
+        _has_escaped = "\\n" in pk
+        print(
+            f"[Firebase] private_key real_newlines={_has_real_nl}, "
+            f"escaped_newlines={_has_escaped}",
+            flush=True,
+        )
 
         cred = credentials.Certificate(credentials_path)
         firebase_admin.initialize_app(cred)
@@ -42,12 +52,14 @@ def init_firebase(credentials_path: str = None, credentials_dict: dict = None):
 
         # Test de conectividad (no bloqueante)
         import threading
+
         def _test_conn():
             try:
                 db.collection("messages").limit(1).get()
                 print("[Firebase] Conexion exitosa con Firestore", flush=True)
             except Exception as e:
                 print(f"[Firebase] Test de conexion fallo: {e}", flush=True)
+
         threading.Thread(target=_test_conn, daemon=True).start()
 
         return db
