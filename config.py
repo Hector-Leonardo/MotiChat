@@ -68,11 +68,19 @@ if _cred_b64:
         # Diagnostico de la clave
         _has_real_nl = "\n" in _pk
         _has_escaped = "\\n" in _pk
-        print(f"[Config] Base64 decodificado OK: {len(_raw)} chars, "
-              f"project={_project}", flush=True)
-        print(f"[Config] private_key: {len(_pk)} chars, "
-              f"real_newlines={_has_real_nl}, escaped_newlines={_has_escaped}",
-              flush=True)
+        print(
+            f"[Config] Base64 decodificado OK: {len(_raw)} chars, project={_project}",
+            flush=True,
+        )
+        print(
+            f"[Config] private_key: {len(_pk)} chars, real_newlines={_has_real_nl}, "
+            f"escaped_newlines={_has_escaped}",
+            flush=True,
+        )
+        print(
+            f"[Config] private_key starts={repr(_pk[:40])} ends={repr(_pk[-40:])}",
+            flush=True,
+        )
 
         # Normalizar: si solo hay secuencias \n escapadas, convertirlas a saltos reales
         if _has_escaped and not _has_real_nl:
@@ -80,7 +88,7 @@ if _cred_b64:
             _parsed["private_key"] = _pk
             print("[Config] Corregidos \\\\n → newlines reales", flush=True)
 
-        # Canonicalizar PEM con cryptography (PKCS8 limpio)
+        # Canonicalizar PEM con cryptography (PKCS8 limpio) con fallback
         try:
             key = load_pem_private_key(_pk.encode("utf-8"), password=None)
             pem_bytes = key.private_bytes(
@@ -93,6 +101,10 @@ if _cred_b64:
             print(f"[Config] PEM canonicalizada: {len(_pk_canon)} chars", flush=True)
         except Exception as e:
             print(f"[Config] ERROR canonicalizando PEM: {e}", flush=True)
+            # Fallback: normalizar saltos y usar la clave original
+            _pk_norm = _pk.replace("\r\n", "\n").replace("\r", "\n")
+            _parsed["private_key"] = _pk_norm
+            print("[Config] Fallback: usando private_key normalizada sin canonicalizar", flush=True)
 
         # Escribir a archivo temporal (firebase_admin lo lee de forma nativa)
         _tmp = tempfile.NamedTemporaryFile(
