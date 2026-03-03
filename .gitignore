@@ -1,0 +1,58 @@
+# ============================================================
+# .gitignore - Chat gRPC + Firebase
+# ============================================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# ---------- Entornos virtuales ----------
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ---------- Variables de entorno ----------
+.env
+
+# ---------- Firebase / Credenciales ----------
+server/firebase_config.json
+*.pem
+*.key
+*.p12
+
+# ---------- gRPC (cache de codigo generado) ----------
+server/generated/__pycache__/
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ---------- Logs ----------
+*.log
+logs/
+
+# ---------- Misc ----------
+*.bak
+*.tmp
+*.temp

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MotiChat</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/foto.png') }}">
+
+    <!-- Firebase JS SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- ==================== PANTALLA AUTH ==================== -->
+    <div class="auth-screen" id="authScreen">
+        <div class="auth-card">
+
+            <div class="auth-logo">
+                <div class="auth-logo-icon">
+                    <img src="{{ url_for('static', filename='img/foto.png') }}" alt="MotiChat">
+                </div>
+                <h1>MotiChat</h1>
+                <p>Conéctate y empieza a conversar</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login" onclick="switchTab('login')">Iniciar Sesión</button>
+                <button class="auth-tab" data-tab="register" onclick="switchTab('register')">Registrarse</button>
+            </div>
+
+            <div class="auth-error" id="authError"></div>
+
+            <!-- Login -->
+            <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginEmail">Correo electrónico</label>
+                    <input type="email" id="loginEmail" placeholder="tu@correo.com" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password" minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)">👁</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" id="loginBtn">Iniciar Sesión</button>
+            </form>
+
+            <!-- Register -->
+            <form class="auth-form" id="registerForm" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="registerName">Nombre de usuario</label>
+                    <input type="text" id="registerName" placeholder="Tu nombre" required maxlength="25" autocomplete="name">
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Correo electrónico</label>
+                    <input type="email" id="registerEmail" placeholder="tu@correo.com" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Contraseña</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres" required autocomplete="new-password" minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('registerPassword', this)">👁</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="registerConfirm">Confirmar contraseña</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="registerConfirm" placeholder="Repite la contraseña" required autocomplete="new-password" minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('registerConfirm', this)">👁</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" id="registerBtn">Crear Cuenta</button>
+            </form>
+
+            <div class="auth-divider"><span>o continuar con</span></div>
+
+            <button class="btn-google" onclick="handleGoogle()" id="googleBtn">
+                <svg viewBox="0 0 533.5 544.3">
+                    <path d="M533.5 278.4c0-18.5-1.5-37.1-4.7-55.3H272.1v104.8h147c-6.1 33.8-25.7 63.7-54.4 82.7v68h87.7c51.5-47.4 81.1-117.4 81.1-200.2z" fill="#4285f4"/>
+                    <path d="M272.1 544.3c73.4 0 135.3-24.1 180.4-65.7l-87.7-68c-24.4 16.6-55.9 26-92.6 26-71 0-131.2-47.9-152.8-112.3H28.9v70.1c46.2 91.9 140.3 149.9 243.2 149.9z" fill="#34a853"/>
+                    <path d="M119.3 324.3c-11.4-33.8-11.4-70.4 0-104.2V150H28.9c-38.6 76.9-38.6 167.5 0 244.4l90.4-70.1z" fill="#fbbc04"/>
+                    <path d="M272.1 107.7c38.8-.6 76.3 14 104.4 40.8l77.7-77.7C405 24.6 339.7-.8 272.1 0 169.2 0 75.1 58 28.9 150l90.4 70.1c21.5-64.5 81.8-112.4 152.8-112.4z" fill="#ea4335"/>
+                </svg>
+                Continuar con Google
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== PANTALLA VERIFICACIÓN ==================== -->
+    <div class="verify-screen" id="verifyScreen">
+        <div class="verify-card">
+            <div class="verify-icon">
+                <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+            </div>
+            <h2>Verifica tu correo electrónico</h2>
+            <p>Hemos enviado un enlace de verificación a:</p>
+            <p class="verify-email-highlight" id="verifyEmailDisplay"></p>
+
+            <div class="verify-steps">
+                <p>Pasos para verificar:</p>
+                <ol>
+                    <li>Abre tu bandeja de entrada</li>
+                    <li>Busca el correo de <strong>noreply@chat-grpc-app.firebaseapp.com</strong></li>
+                    <li>Haz clic en el enlace de verificación</li>
+                    <li>Regresa aquí y pulsa "Ya verifiqué"</li>
+                </ol>
+            </div>
+
+            <div class="verify-actions">
+                <button class="btn-verify-check" id="verifyCheckBtn" onclick="checkVerification()">Ya verifiqué mi correo</button>
+                <button class="btn-resend" id="resendBtn" onclick="resendVerification()">Reenviar correo de verificación</button>
+                <div class="verify-success" id="verifySuccess"></div>
+                <div class="verify-error" id="verifyError"></div>
+                <div class="countdown" id="resendCountdown"></div>
+                <button class="btn-back-login" onclick="backToLogin()">← Volver al inicio de sesión</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PANTALLA SET PASSWORD (Google) ==================== -->
+    <div class="setpw-screen" id="setPasswordScreen">
+        <div class="setpw-card">
+            <div class="setpw-icon">
+                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v2z"/></svg>
+            </div>
+            <h2>Establece una contraseña</h2>
+            <p>Para mayor seguridad, crea una contraseña para tu cuenta de MotiChat</p>
+            <p class="setpw-email-highlight" id="setpwEmailDisplay"></p>
+
+            <form class="setpw-form" id="setPasswordForm" onsubmit="handleSetPassword(event)">
+                <div class="form-group">
+                    <label for="setPwPassword">Contraseña</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="setPwPassword" placeholder="Mínimo 6 caracteres" required minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('setPwPassword', this)">👁</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="setPwConfirm">Confirmar contraseña</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="setPwConfirm" placeholder="Repite la contraseña" required minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('setPwConfirm', this)">👁</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-setpw" id="setPwBtn">Guardar contraseña</button>
+            </form>
+
+            <div class="setpw-success" id="setPwSuccess"></div>
+            <div class="setpw-error" id="setPwError"></div>
+
+            <button class="btn-back-login" onclick="cancelSetPassword()">← Cancelar y volver</button>
+        </div>
+    </div>
+
+    <!-- ==================== PANTALLA CHAT ==================== -->
+    <div class="chat-screen" id="chatScreen">
+
+        <div class="chat-header">
+            <div class="header-avatar" id="headerAvatar">
+                <img src="{{ url_for('static', filename='img/foto.png') }}" alt="MotiChat">
+            </div>
+            <div class="header-info">
+                <h1>MotiChat</h1>
+                <div class="status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">desconectado</span>
+                </div>
+            </div>
+            <button class="btn-logout" onclick="handleLogout()" title="Cerrar sesión">
+                <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                <span>Salir</span>
+            </button>
+        </div>
+
+        <div class="messages-area" id="messagesArea"></div>
+
+        <div class="input-area" id="inputArea">
+            <input type="text" id="messageInput" placeholder="Mensaje" maxlength="500" autocomplete="off"/>
+            <button onclick="sendMessage()" title="Enviar">
+                <svg class="send-icon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase config (inyectado por Jinja2) -->
+    <script>
+        const FIREBASE_CONFIG = {
+            apiKey:            "{{ firebase_config.apiKey }}",
+            authDomain:        "{{ firebase_config.authDomain }}",
+            projectId:         "{{ firebase_config.projectId }}",
+            storageBucket:     "{{ firebase_config.storageBucket }}",
+            messagingSenderId: "{{ firebase_config.messagingSenderId }}",
+            appId:             "{{ firebase_config.appId }}",
+        };
+    </script>
+
+    <!-- Lógica de la app -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+</body>
+</html>

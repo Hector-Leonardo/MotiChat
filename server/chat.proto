@@ -1,0 +1,25 @@
+// ============================================================
+// chat.proto - Definición del servicio gRPC para el chat
+// ============================================================
+// Este archivo define:
+//   - El mensaje ChatMessage con campos user, message y timestamp
+//   - El servicio ChatService con streaming bidireccional
+// ============================================================
+
+syntax = "proto3";
+
+package chat;
+
+// Mensaje que representa un mensaje de chat
+message ChatMessage {
+    string user = 1;       // Nombre del usuario que envía el mensaje
+    string message = 2;    // Contenido del mensaje
+    string timestamp = 3;  // Fecha y hora en formato "YYYY-MM-DD HH:MM:SS"
+}
+
+// Servicio de chat con streaming bidireccional
+// Permite que múltiples clientes envíen y reciban mensajes en tiempo real
+service ChatService {
+    // Stream bidireccional: el cliente envía mensajes y recibe mensajes de todos
+    rpc ChatStream(stream ChatMessage) returns (stream ChatMessage);
+}
