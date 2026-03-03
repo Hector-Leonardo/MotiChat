@@ -38,19 +38,71 @@ FLASK_DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 # En produccion (Render) las credenciales se pasan como JSON en la variable
 # FIREBASE_CREDENTIALS_JSON. En desarrollo se sigue usando el archivo local.
 
+def _rebuild_pem(raw_pem: str) -> str:
+    """
+    Reconstruye una clave PEM desde cero.
+
+    1. Quita headers/footers y TODO el whitespace.
+    2. Obtiene el base64 puro.
+    3. Lo re-formatea en lineas de 64 caracteres.
+    4. Re-agrega headers/footers correctos.
+
+    Esto garantiza un PEM valido sin importar como
+    Render haya corrompido los saltos de linea.
+    """
+    import re
+    import base64
+
+    # Normalizar cualquier variante de newline
+    pk = raw_pem
+    pk = pk.replace("\\\\n", "\n")
+    pk = pk.replace("\\n", "\n")
+    pk = pk.replace("\r\n", "\n")
+    pk = pk.replace("\r", "\n")
+
+    # Extraer solo el contenido base64 (quitar headers, footers, espacios)
+    pk = re.sub(r"-----\s*BEGIN[^-]*-----", "", pk)
+    pk = re.sub(r"-----\s*END[^-]*-----", "", pk)
+    pk = re.sub(r"\s+", "", pk)  # quitar TODOS los espacios/newlines
+
+    if not pk:
+        print("[Config] ADVERTENCIA: private_key quedo vacia tras limpieza")
+        return raw_pem
+
+    # Validar que es base64 valido
+    try:
+        decoded = base64.b64decode(pk)
+        print(f"[Config] PEM base64 decodificado OK: {len(decoded)} bytes")
+    except Exception as e:
+        print(f"[Config] ADVERTENCIA: base64 no valido: {e}")
+        # Intentar devolver la clave original con newlines normalizados
+        return raw_pem.replace("\\n", "\n")
+
+    # Re-codificar en base64 limpio (por si acaso)
+    pk_clean = base64.b64encode(decoded).decode("ascii")
+
+    # Formatear en lineas de 64 caracteres (estandar PEM RFC 7468)
+    lines = [pk_clean[i:i+64] for i in range(0, len(pk_clean), 64)]
+
+    # Reconstruir PEM completo
+    rebuilt = "-----BEGIN PRIVATE KEY-----\n"
+    rebuilt += "\n".join(lines)
+    rebuilt += "\n-----END PRIVATE KEY-----\n"
+
+    print(f"[Config] PEM reconstruida: {len(rebuilt)} chars, "
+          f"{len(lines)} lineas de base64")
+    return rebuilt
+
+
 def _fix_private_key(raw_json: str) -> str:
     """
     Repara la private_key PEM que puede llegar corrupta desde env vars.
-    Render maneja los \\n de formas impredecibles:
-      - A veces quedan como literal \\n (2 chars: backslash + n)
-      - A veces se convierten en saltos de linea reales
-      - A veces quedan como \\\\n (doble escape)
+    Reconstruye el PEM completamente desde el base64 puro.
     """
     try:
         cred = json.loads(raw_json)
     except json.JSONDecodeError:
         # Si falla el parse, posiblemente hay newlines reales rompiendo el JSON.
-        # Intentar reparar reemplazando newlines reales dentro del string
         raw_json = raw_json.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
         try:
             cred = json.loads(raw_json)
@@ -59,22 +111,9 @@ def _fix_private_key(raw_json: str) -> str:
             return raw_json
 
     if "private_key" in cred:
-        pk = cred["private_key"]
-        # Paso 1: normalizar todos los tipos de newline a \n real
-        pk = pk.replace("\\\\n", "\n")  # doble escape → newline real
-        pk = pk.replace("\\n", "\n")    # escape simple → newline real
-        pk = pk.replace("\r\n", "\n")   # CRLF → LF
-        pk = pk.replace("\r", "\n")     # CR → LF
-
-        # Paso 2: asegurar que empiece y termine correctamente
-        if not pk.startswith("-----BEGIN"):
-            pk = pk.strip()
-        if not pk.endswith("\n"):
-            pk += "\n"
-
-        cred["private_key"] = pk
-        print(f"[Config] Private key reparada: {len(pk)} chars, "
-              f"empieza con '{pk[:30]}...'")
+        original = cred["private_key"]
+        print(f"[Config] private_key original: {len(original)} chars")
+        cred["private_key"] = _rebuild_pem(original)
 
     return json.dumps(cred)
 
