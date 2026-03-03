@@ -31,7 +31,7 @@ def start_grpc_background():
     )
     server.add_insecure_port(f"[::]:{config.GRPC_PORT}")
     server.start()
-    print(f"[gRPC] Servidor iniciado en puerto {config.GRPC_PORT}")
+    print(f"[gRPC] Servidor iniciado en puerto {config.GRPC_PORT}", flush=True)
     return server
 
 

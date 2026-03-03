@@ -16,6 +16,8 @@ services:
       # Render establece RENDER=true automaticamente
       - key: PYTHON_VERSION
         value: "3.11.11"
+      - key: PYTHONUNBUFFERED
+        value: "1"
 
       # --- gRPC interno ---
       - key: GRPC_HOST

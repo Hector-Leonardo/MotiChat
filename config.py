@@ -66,15 +66,15 @@ def _rebuild_pem(raw_pem: str) -> str:
     pk = re.sub(r"\s+", "", pk)  # quitar TODOS los espacios/newlines
 
     if not pk:
-        print("[Config] ADVERTENCIA: private_key quedo vacia tras limpieza")
+        print("[Config] ADVERTENCIA: private_key quedo vacia tras limpieza", flush=True)
         return raw_pem
 
     # Validar que es base64 valido
     try:
         decoded = base64.b64decode(pk)
-        print(f"[Config] PEM base64 decodificado OK: {len(decoded)} bytes")
+        print(f"[Config] PEM base64 decodificado OK: {len(decoded)} bytes", flush=True)
     except Exception as e:
-        print(f"[Config] ADVERTENCIA: base64 no valido: {e}")
+        print(f"[Config] ADVERTENCIA: base64 no valido: {e}", flush=True)
         # Intentar devolver la clave original con newlines normalizados
         return raw_pem.replace("\\n", "\n")
 
@@ -90,7 +90,7 @@ def _rebuild_pem(raw_pem: str) -> str:
     rebuilt += "\n-----END PRIVATE KEY-----\n"
 
     print(f"[Config] PEM reconstruida: {len(rebuilt)} chars, "
-          f"{len(lines)} lineas de base64")
+          f"{len(lines)} lineas de base64", flush=True)
     return rebuilt
 
 
@@ -131,9 +131,9 @@ if _cred_b64:
     # --- OPCION 1: Base64 (recomendado para Render) ---
     try:
         _cred_json = _b64.b64decode(_cred_b64).decode("utf-8")
-        print(f"[Config] Credenciales decodificadas de Base64: {len(_cred_json)} chars")
+        print(f"[Config] Credenciales decodificadas de Base64: {len(_cred_json)} chars", flush=True)
     except Exception as e:
-        print(f"[Config] ERROR decodificando Base64: {e}")
+        print(f"[Config] ERROR decodificando Base64: {e}", flush=True)
         _cred_json = ""
 
 # Variable global: diccionario de credenciales (None = usar archivo local)
@@ -146,9 +146,9 @@ if _cred_json:
         if "private_key" in _cred_dict:
             _cred_dict["private_key"] = _rebuild_pem(_cred_dict["private_key"])
         FIREBASE_CREDENTIALS_DICT = _cred_dict
-        print(f"[Config] Credenciales cargadas como dict: project_id={_cred_dict.get('project_id', '?')}")
+        print(f"[Config] Credenciales cargadas como dict: project_id={_cred_dict.get('project_id', '?')}", flush=True)
     except json.JSONDecodeError as e:
-        print(f"[Config] ERROR parseando JSON de credenciales: {e}")
+        print(f"[Config] ERROR parseando JSON de credenciales: {e}", flush=True)
 
     FIREBASE_CREDENTIALS_PATH = None  # No se usa archivo
 else:

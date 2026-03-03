@@ -14,23 +14,32 @@ def init_firebase(credentials_path: str = None, credentials_dict: dict = None):
     """
     try:
         if credentials_dict:
-            print(f"[Firebase] Cargando credenciales desde dict (project: {credentials_dict.get('project_id', '?')})")
+            print(f"[Firebase] Cargando credenciales desde dict (project: {credentials_dict.get('project_id', '?')})", flush=True)
             pk = credentials_dict.get('private_key', '')
-            print(f"[Firebase] PEM: {len(pk)} chars, empieza con '{pk[:30]}...', termina con '...{pk[-30:]}'")
+            print(f"[Firebase] PEM: {len(pk)} chars, empieza con '{pk[:30]}...', termina con '...{pk[-30:]}'", flush=True)
             cred = credentials.Certificate(credentials_dict)
         else:
-            print(f"[Firebase] Cargando credenciales de archivo: {credentials_path}")
+            print(f"[Firebase] Cargando credenciales de archivo: {credentials_path}", flush=True)
             cred = credentials.Certificate(credentials_path)
         firebase_admin.initialize_app(cred)
         db = firestore.client()
-        # Test rápido: intentar acceder a la colección
-        db.collection("messages").limit(1).get()
-        print("[Firebase] Conexion exitosa con Firestore")
+        print("[Firebase] Cliente Firestore creado OK", flush=True)
+
+        # Test de conectividad (no bloqueante - en background)
+        import threading
+        def _test_conn():
+            try:
+                db.collection("messages").limit(1).get()
+                print("[Firebase] Conexion exitosa con Firestore", flush=True)
+            except Exception as e:
+                print(f"[Firebase] Test de conexion fallo: {e}", flush=True)
+        threading.Thread(target=_test_conn, daemon=True).start()
+
         return db
     except Exception as e:
-        print(f"[Firebase] ERROR al conectar: {e}")
-        print(f"[Firebase] Tipo de error: {type(e).__name__}")
-        print("[Firebase] El servidor funcionara SIN persistencia")
+        print(f"[Firebase] ERROR al conectar: {e}", flush=True)
+        print(f"[Firebase] Tipo de error: {type(e).__name__}", flush=True)
+        print("[Firebase] El servidor funcionara SIN persistencia", flush=True)
         return None
 
 
