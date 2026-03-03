@@ -4,6 +4,7 @@ web/grpc_client.py — Cliente gRPC que actúa como puente HTTP ↔ gRPC.
 Mantiene una conexión de streaming bidireccional y un buffer
 indexado de mensajes. Cada pestaña del navegador rastrea su
 propia posición con el parámetro `since`.
+Incluye reconexión automática si el stream se cae.
 """
 
 import grpc
@@ -12,6 +13,10 @@ import time
 from datetime import datetime
 
 from server.generated import chat_pb2, chat_pb2_grpc
+
+# Intervalo de reconexión (segundos)
+_RECONNECT_DELAY = 3
+_MAX_RECONNECT_DELAY = 30
 
 
 class GrpcChatClient:
@@ -35,7 +40,8 @@ class GrpcChatClient:
             )
             self.stub = chat_pb2_grpc.ChatServiceStub(self.channel)
             self.connected = True
-            threading.Thread(target=self._stream_loop, daemon=True).start()
+            self._stop.clear()
+            threading.Thread(target=self._stream_loop_with_reconnect, daemon=True).start()
             print(f"[Web] Conectado al gRPC en {self.grpc_host}:{self.grpc_port}")
         except Exception as e:
             print(f"[Web] Error al conectar con gRPC: {e}")
@@ -48,25 +54,49 @@ class GrpcChatClient:
                 yield self._outgoing.pop(0)
             time.sleep(0.1)
 
-    # ── Loop de streaming ────────────────────────────────────
-    def _stream_loop(self):
-        try:
-            responses = self.stub.ChatStream(self._generate_outgoing())
-            for response in responses:
-                with self.lock:
-                    idx = len(self.messages)
-                    self.messages.append({
-                        "id": idx,
-                        "user": response.user,
-                        "message": response.message,
-                        "timestamp": response.timestamp,
-                    })
-        except grpc.RpcError as e:
-            print(f"[Web] Conexion gRPC perdida: {e.code()}")
+    # ── Loop de streaming con reconexión automática ──────────
+    def _stream_loop_with_reconnect(self):
+        delay = _RECONNECT_DELAY
+        while not self._stop.is_set():
+            try:
+                self._run_stream()
+            except Exception as e:
+                print(f"[Web] Stream terminado: {e}")
+
+            if self._stop.is_set():
+                break
+
             self.connected = False
-        except Exception as e:
-            print(f"[Web] Error en stream: {e}")
-            self.connected = False
+            print(f"[Web] Reconectando en {delay}s...")
+            time.sleep(delay)
+            delay = min(delay * 2, _MAX_RECONNECT_DELAY)
+
+            # Recrear canal y stub
+            try:
+                self.channel = grpc.insecure_channel(
+                    f"{self.grpc_host}:{self.grpc_port}"
+                )
+                self.stub = chat_pb2_grpc.ChatServiceStub(self.channel)
+                self.connected = True
+                delay = _RECONNECT_DELAY  # Reset delay on success
+                print("[Web] Reconexión gRPC exitosa")
+            except Exception as e:
+                print(f"[Web] Error al reconectar: {e}")
+
+    def _run_stream(self):
+        """Ejecuta un ciclo de streaming. Lanza excepción si se corta."""
+        responses = self.stub.ChatStream(self._generate_outgoing())
+        for response in responses:
+            with self.lock:
+                idx = len(self.messages)
+                self.messages.append({
+                    "id": idx,
+                    "user": response.user,
+                    "message": response.message,
+                    "timestamp": response.timestamp,
+                })
+        # Si el for termina normalmente, el stream se cerró
+        raise ConnectionError("Stream cerrado por el servidor")
 
     # ── Enviar mensaje ───────────────────────────────────────
     def send_message(self, user: str, message: str) -> dict:
