@@ -118,9 +118,28 @@ def _fix_private_key(raw_json: str) -> str:
     return json.dumps(cred)
 
 
+# Estrategia de credenciales (en orden de prioridad):
+#   1. FIREBASE_CREDENTIALS_BASE64  — JSON codificado en Base64 (mejor opcion)
+#   2. FIREBASE_CREDENTIALS_JSON    — JSON como string (problemas con \n)
+#   3. Archivo local firebase_config.json
+import base64 as _b64
+
+_cred_b64 = os.getenv("FIREBASE_CREDENTIALS_BASE64", "")
 _cred_json = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
+
+if _cred_b64:
+    # --- OPCION 1: Base64 (recomendado para Render) ---
+    try:
+        _cred_json = _b64.b64decode(_cred_b64).decode("utf-8")
+        print(f"[Config] Credenciales decodificadas de Base64: {len(_cred_json)} chars")
+    except Exception as e:
+        print(f"[Config] ERROR decodificando Base64: {e}")
+        _cred_json = ""
+
 if _cred_json:
-    _cred_json = _fix_private_key(_cred_json)
+    # Si viene de Base64 ya esta limpio; si viene del env var plano, reparar
+    if not _cred_b64:
+        _cred_json = _fix_private_key(_cred_json)
 
     # Escribir JSON temporal para que firebase_admin lo consuma
     _tmp = tempfile.NamedTemporaryFile(
