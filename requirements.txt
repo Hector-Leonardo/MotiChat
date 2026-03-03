@@ -3,11 +3,11 @@
 # ============================================================
 # Instalar con: pip install -r requirements.txt
 
-grpcio==1.68.1                # Framework gRPC para Python
-grpcio-tools==1.68.1          # Herramientas para generar código desde .proto
-firebase-admin==6.6.0         # Firebase Admin SDK para Python
-flask==3.1.0                  # Servidor web para servir el frontend
-flask-cors==5.0.0             # Permite peticiones cross-origin (CORS)
-protobuf==5.29.2              # Serialización de mensajes Protocol Buffers
-python-dotenv==1.0.1          # Carga variables de entorno desde .env
-gunicorn==23.0.0              # Servidor WSGI para producción (Render)
+grpcio>=1.60.0                # Framework gRPC para Python
+grpcio-tools>=1.60.0          # Herramientas para generar código desde .proto
+firebase-admin>=6.5.0         # Firebase Admin SDK para Python
+flask>=3.0.0                  # Servidor web para servir el frontend
+flask-cors>=5.0.0             # Permite peticiones cross-origin (CORS)
+protobuf>=5.26.0              # Serialización de mensajes Protocol Buffers
+python-dotenv>=1.0.0          # Carga variables de entorno desde .env
+gunicorn>=22.0.0              # Servidor WSGI para producción (Render)
