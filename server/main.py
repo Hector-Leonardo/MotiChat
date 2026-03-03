@@ -23,7 +23,6 @@ def start_grpc_background():
     (sin bloquear; ideal para lanzarlo junto con Flask/gunicorn)."""
     db = init_firebase(
         credentials_path=config.FIREBASE_CREDENTIALS_PATH,
-        credentials_dict=config.FIREBASE_CREDENTIALS_DICT,
     )
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=20))
     chat_pb2_grpc.add_ChatServiceServicer_to_server(

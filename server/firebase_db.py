@@ -9,23 +9,36 @@ from firebase_admin import credentials, firestore
 def init_firebase(credentials_path: str = None, credentials_dict: dict = None):
     """
     Inicializa Firebase Admin SDK y retorna el cliente de Firestore.
-    Acepta un path a archivo JSON o un diccionario de credenciales.
+    Usa siempre el path al archivo JSON (mas confiable).
     Retorna None si falla (el servidor funcionará sin persistencia).
     """
     try:
-        if credentials_dict:
-            print(f"[Firebase] Cargando credenciales desde dict (project: {credentials_dict.get('project_id', '?')})", flush=True)
-            pk = credentials_dict.get('private_key', '')
-            print(f"[Firebase] PEM: {len(pk)} chars, empieza con '{pk[:30]}...', termina con '...{pk[-30:]}'", flush=True)
-            cred = credentials.Certificate(credentials_dict)
-        else:
-            print(f"[Firebase] Cargando credenciales de archivo: {credentials_path}", flush=True)
-            cred = credentials.Certificate(credentials_path)
+        print(f"[Firebase] Cargando credenciales de: {credentials_path}", flush=True)
+
+        # Verificar que el archivo existe
+        import os
+        if not credentials_path or not os.path.isfile(credentials_path):
+            print(f"[Firebase] ERROR: archivo no encontrado: {credentials_path}", flush=True)
+            return None
+
+        # Diagnostico: leer y validar el JSON antes de pasarlo a Firebase
+        with open(credentials_path, 'r', encoding='utf-8') as f:
+            raw = f.read()
+        data = __import__('json').loads(raw)
+        pk = data.get('private_key', '')
+        print(f"[Firebase] JSON OK: project={data.get('project_id','?')}, "
+              f"client_email={data.get('client_email','?')[:30]}...", flush=True)
+        print(f"[Firebase] private_key: {len(pk)} chars, "
+              f"starts='{pk[:27]}', ends='{pk[-27:]}'", flush=True)
+        print(f"[Firebase] private_key has real newlines: {'\\n' not in pk[:50]}",
+              flush=True)
+
+        cred = credentials.Certificate(credentials_path)
         firebase_admin.initialize_app(cred)
         db = firestore.client()
         print("[Firebase] Cliente Firestore creado OK", flush=True)
 
-        # Test de conectividad (no bloqueante - en background)
+        # Test de conectividad (no bloqueante)
         import threading
         def _test_conn():
             try:

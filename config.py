@@ -6,10 +6,11 @@ constantes tipadas para todos los modulos.
 
 Soporta despliegue en Render:
   - PORT (asignado por Render)
-  - FIREBASE_CREDENTIALS_JSON (credenciales como JSON string)
+  - FIREBASE_CREDENTIALS_BASE64 (credenciales como JSON en Base64)
 """
 
 import os
+import sys
 import json
 import tempfile
 from pathlib import Path
@@ -35,127 +36,71 @@ FLASK_PORT = int(os.getenv("PORT", os.getenv("FLASK_PORT", "5000")))
 FLASK_DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 
 # -- Firebase Admin SDK --------------------------------------------------------
-# En produccion (Render) las credenciales se pasan como JSON en la variable
-# FIREBASE_CREDENTIALS_JSON. En desarrollo se sigue usando el archivo local.
-
-def _rebuild_pem(raw_pem: str) -> str:
-    """
-    Reconstruye una clave PEM desde cero.
-
-    1. Quita headers/footers y TODO el whitespace.
-    2. Obtiene el base64 puro.
-    3. Lo re-formatea en lineas de 64 caracteres.
-    4. Re-agrega headers/footers correctos.
-
-    Esto garantiza un PEM valido sin importar como
-    Render haya corrompido los saltos de linea.
-    """
-    import re
-    import base64
-
-    # Normalizar cualquier variante de newline
-    pk = raw_pem
-    pk = pk.replace("\\\\n", "\n")
-    pk = pk.replace("\\n", "\n")
-    pk = pk.replace("\r\n", "\n")
-    pk = pk.replace("\r", "\n")
-
-    # Extraer solo el contenido base64 (quitar headers, footers, espacios)
-    pk = re.sub(r"-----\s*BEGIN[^-]*-----", "", pk)
-    pk = re.sub(r"-----\s*END[^-]*-----", "", pk)
-    pk = re.sub(r"\s+", "", pk)  # quitar TODOS los espacios/newlines
-
-    if not pk:
-        print("[Config] ADVERTENCIA: private_key quedo vacia tras limpieza", flush=True)
-        return raw_pem
-
-    # Validar que es base64 valido
-    try:
-        decoded = base64.b64decode(pk)
-        print(f"[Config] PEM base64 decodificado OK: {len(decoded)} bytes", flush=True)
-    except Exception as e:
-        print(f"[Config] ADVERTENCIA: base64 no valido: {e}", flush=True)
-        # Intentar devolver la clave original con newlines normalizados
-        return raw_pem.replace("\\n", "\n")
-
-    # Re-codificar en base64 limpio (por si acaso)
-    pk_clean = base64.b64encode(decoded).decode("ascii")
-
-    # Formatear en lineas de 64 caracteres (estandar PEM RFC 7468)
-    lines = [pk_clean[i:i+64] for i in range(0, len(pk_clean), 64)]
-
-    # Reconstruir PEM completo
-    rebuilt = "-----BEGIN PRIVATE KEY-----\n"
-    rebuilt += "\n".join(lines)
-    rebuilt += "\n-----END PRIVATE KEY-----\n"
-
-    print(f"[Config] PEM reconstruida: {len(rebuilt)} chars, "
-          f"{len(lines)} lineas de base64", flush=True)
-    return rebuilt
-
-
-def _fix_private_key(raw_json: str) -> str:
-    """
-    Repara la private_key PEM que puede llegar corrupta desde env vars.
-    Reconstruye el PEM completamente desde el base64 puro.
-    """
-    try:
-        cred = json.loads(raw_json)
-    except json.JSONDecodeError:
-        # Si falla el parse, posiblemente hay newlines reales rompiendo el JSON.
-        raw_json = raw_json.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
-        try:
-            cred = json.loads(raw_json)
-        except json.JSONDecodeError:
-            print("[Config] ERROR: FIREBASE_CREDENTIALS_JSON no es JSON valido")
-            return raw_json
-
-    if "private_key" in cred:
-        original = cred["private_key"]
-        print(f"[Config] private_key original: {len(original)} chars")
-        cred["private_key"] = _rebuild_pem(original)
-
-    return json.dumps(cred)
-
-
 # Estrategia de credenciales (en orden de prioridad):
-#   1. FIREBASE_CREDENTIALS_BASE64  — JSON codificado en Base64 (mejor opcion)
-#   2. FIREBASE_CREDENTIALS_JSON    — JSON como string (problemas con \n)
-#   3. Archivo local firebase_config.json
+#   1. FIREBASE_CREDENTIALS_BASE64 — JSON completo codificado en Base64
+#   2. Archivo local server/firebase_config.json
+#
+# La clave se escribe a un archivo temporal para usar el code-path
+# mas probado de firebase_admin (Certificate con filepath).
+
 import base64 as _b64
 
-_cred_b64 = os.getenv("FIREBASE_CREDENTIALS_BASE64", "")
-_cred_json = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
+FIREBASE_CREDENTIALS_PATH = None
+
+_cred_b64 = os.getenv("FIREBASE_CREDENTIALS_BASE64", "").strip()
 
 if _cred_b64:
-    # --- OPCION 1: Base64 (recomendado para Render) ---
+    # --- Base64 → JSON → archivo temporal ---
     try:
-        _cred_json = _b64.b64decode(_cred_b64).decode("utf-8")
-        print(f"[Config] Credenciales decodificadas de Base64: {len(_cred_json)} chars", flush=True)
+        _raw = _b64.b64decode(_cred_b64).decode("utf-8")
+        # Validar que es JSON valido
+        _parsed = json.loads(_raw)
+        _project = _parsed.get("project_id", "?")
+        _pk = _parsed.get("private_key", "")
+
+        # Diagnostico de la clave
+        _has_real_nl = "\n" in _pk
+        _has_escaped = "\\n" in _pk
+        print(f"[Config] Base64 decodificado OK: {len(_raw)} chars, "
+              f"project={_project}", flush=True)
+        print(f"[Config] private_key: {len(_pk)} chars, "
+              f"real_newlines={_has_real_nl}, escaped_newlines={_has_escaped}",
+              flush=True)
+
+        # Si la clave tiene \\n literales (raro desde Base64, pero por si acaso)
+        if _has_escaped and not _has_real_nl:
+            _pk = _pk.replace("\\n", "\n")
+            _parsed["private_key"] = _pk
+            _raw = json.dumps(_parsed)
+            print("[Config] Corregidos \\\\n → newlines reales", flush=True)
+
+        # Escribir a archivo temporal (firebase_admin lo lee de forma nativa)
+        _tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", prefix="fb_cred_",
+            delete=False, encoding="utf-8"
+        )
+        _tmp.write(_raw)
+        _tmp.flush()
+        _tmp.close()
+        FIREBASE_CREDENTIALS_PATH = _tmp.name
+        print(f"[Config] Credenciales escritas en {_tmp.name}", flush=True)
+
     except Exception as e:
-        print(f"[Config] ERROR decodificando Base64: {e}", flush=True)
-        _cred_json = ""
+        print(f"[Config] ERROR procesando Base64: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
 
-# Variable global: diccionario de credenciales (None = usar archivo local)
-FIREBASE_CREDENTIALS_DICT = None
-
-if _cred_json:
-    try:
-        _cred_dict = json.loads(_cred_json)
-        # Siempre reparar la private_key
-        if "private_key" in _cred_dict:
-            _cred_dict["private_key"] = _rebuild_pem(_cred_dict["private_key"])
-        FIREBASE_CREDENTIALS_DICT = _cred_dict
-        print(f"[Config] Credenciales cargadas como dict: project_id={_cred_dict.get('project_id', '?')}", flush=True)
-    except json.JSONDecodeError as e:
-        print(f"[Config] ERROR parseando JSON de credenciales: {e}", flush=True)
-
-    FIREBASE_CREDENTIALS_PATH = None  # No se usa archivo
-else:
+if not FIREBASE_CREDENTIALS_PATH:
+    # --- Archivo local (desarrollo) ---
     _default_cred = str(BASE_DIR / "server" / "firebase_config.json")
-    FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", _default_cred)
+    FIREBASE_CREDENTIALS_PATH = os.getenv(
+        "FIREBASE_CREDENTIALS_PATH", _default_cred
+    )
     if not os.path.isabs(FIREBASE_CREDENTIALS_PATH):
         FIREBASE_CREDENTIALS_PATH = str(BASE_DIR / FIREBASE_CREDENTIALS_PATH)
+
+# Variable legacy (ya no se usa, pero mantener por compatibilidad)
+FIREBASE_CREDENTIALS_DICT = None
 
 # -- Firebase Web (frontend) ---------------------------------------------------
 FIREBASE_WEB = {

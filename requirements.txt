@@ -6,6 +6,7 @@
 grpcio>=1.60.0                # Framework gRPC para Python
 grpcio-tools>=1.60.0          # Herramientas para generar código desde .proto
 firebase-admin>=6.5.0         # Firebase Admin SDK para Python
+cryptography>=42.0.0          # Soporte criptografico (RSA keys) - requerido por google-auth
 flask>=3.0.0                  # Servidor web para servir el frontend
 flask-cors>=5.0.0             # Permite peticiones cross-origin (CORS)
 protobuf>=5.26.0              # Serialización de mensajes Protocol Buffers
