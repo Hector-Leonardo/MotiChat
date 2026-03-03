@@ -39,6 +39,17 @@ FLASK_DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 # FIREBASE_CREDENTIALS_JSON. En desarrollo se sigue usando el archivo local.
 _cred_json = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
 if _cred_json:
+    # Reparar private_key: Render puede romper los \n del PEM
+    import json as _json
+    try:
+        _cred_dict = _json.loads(_cred_json)
+        if "private_key" in _cred_dict:
+            # Asegurar que los \n sean saltos de linea reales
+            _cred_dict["private_key"] = _cred_dict["private_key"].replace("\\n", "\n")
+        _cred_json = _json.dumps(_cred_dict)
+    except _json.JSONDecodeError:
+        pass  # Si no parsea, intentar tal cual
+
     # Escribir JSON temporal para que firebase_admin lo consuma
     _tmp = tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", delete=False, dir=tempfile.gettempdir()
