@@ -28,11 +28,12 @@ def init_firebase(credentials_path: str = None, credentials_dict: dict = None):
         pk = data.get('private_key', '')
         print(f"[Firebase] JSON OK: project={data.get('project_id','?')}, "
               f"client_email={data.get('client_email','?')[:30]}...", flush=True)
-        print(f"[Firebase] private_key: {len(pk)} chars, "
-              f"starts='{pk[:27]}', ends='{pk[-27:]}'", flush=True)
-        _has_real_nl = "\n" in pk
-        print(f"[Firebase] private_key has real newlines: {_has_real_nl}",
-              flush=True)
+          print(f"[Firebase] private_key: {len(pk)} chars, "
+              f"starts={repr(pk[:27])}, ends={repr(pk[-27:])}", flush=True)
+          _has_real_nl = "\n" in pk
+          _has_escaped = "\\n" in pk
+          print(f"[Firebase] private_key real_newlines={_has_real_nl}, "
+              f"escaped_newlines={_has_escaped}", flush=True)
 
         cred = credentials.Certificate(credentials_path)
         firebase_admin.initialize_app(cred)

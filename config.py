@@ -15,6 +15,13 @@ import json
 import tempfile
 from pathlib import Path
 from dotenv import load_dotenv
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import (
+    load_pem_private_key,
+    Encoding,
+    PrivateFormat,
+    NoEncryption,
+)
 
 # Raiz del proyecto
 BASE_DIR = Path(__file__).resolve().parent
@@ -67,19 +74,32 @@ if _cred_b64:
               f"real_newlines={_has_real_nl}, escaped_newlines={_has_escaped}",
               flush=True)
 
-        # Si la clave tiene \\n literales (raro desde Base64, pero por si acaso)
+        # Normalizar: si solo hay secuencias \n escapadas, convertirlas a saltos reales
         if _has_escaped and not _has_real_nl:
             _pk = _pk.replace("\\n", "\n")
             _parsed["private_key"] = _pk
-            _raw = json.dumps(_parsed)
             print("[Config] Corregidos \\\\n → newlines reales", flush=True)
+
+        # Canonicalizar PEM con cryptography (PKCS8 limpio)
+        try:
+            key = load_pem_private_key(_pk.encode("utf-8"), password=None)
+            pem_bytes = key.private_bytes(
+                encoding=Encoding.PEM,
+                format=PrivateFormat.PKCS8,
+                encryption_algorithm=NoEncryption(),
+            )
+            _pk_canon = pem_bytes.decode("utf-8")
+            _parsed["private_key"] = _pk_canon
+            print(f"[Config] PEM canonicalizada: {len(_pk_canon)} chars", flush=True)
+        except Exception as e:
+            print(f"[Config] ERROR canonicalizando PEM: {e}", flush=True)
 
         # Escribir a archivo temporal (firebase_admin lo lee de forma nativa)
         _tmp = tempfile.NamedTemporaryFile(
             mode="w", suffix=".json", prefix="fb_cred_",
             delete=False, encoding="utf-8"
         )
-        _tmp.write(_raw)
+        _tmp.write(json.dumps(_parsed))
         _tmp.flush()
         _tmp.close()
         FIREBASE_CREDENTIALS_PATH = _tmp.name
