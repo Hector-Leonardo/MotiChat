@@ -15,7 +15,7 @@ services:
     envVars:
       # Render establece RENDER=true automaticamente
       - key: PYTHON_VERSION
-        value: "3.13.0"
+        value: "3.11.11"
 
       # --- gRPC interno ---
       - key: GRPC_HOST
