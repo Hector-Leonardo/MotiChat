@@ -12,13 +12,17 @@ def init_firebase(credentials_path: str):
     Retorna None si falla (el servidor funcionará sin persistencia).
     """
     try:
+        print(f"[Firebase] Cargando credenciales de: {credentials_path}")
         cred = credentials.Certificate(credentials_path)
         firebase_admin.initialize_app(cred)
         db = firestore.client()
+        # Test rápido: intentar acceder a la colección
+        db.collection("messages").limit(1).get()
         print("[Firebase] Conexion exitosa con Firestore")
         return db
     except Exception as e:
-        print(f"[Firebase] Error al conectar: {e}")
+        print(f"[Firebase] ERROR al conectar: {e}")
+        print(f"[Firebase] Tipo de error: {type(e).__name__}")
         print("[Firebase] El servidor funcionara SIN persistencia")
         return None
 

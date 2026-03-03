@@ -37,18 +37,51 @@ FLASK_DEBUG = os.getenv("FLASK_DEBUG", "false").lower() == "true"
 # -- Firebase Admin SDK --------------------------------------------------------
 # En produccion (Render) las credenciales se pasan como JSON en la variable
 # FIREBASE_CREDENTIALS_JSON. En desarrollo se sigue usando el archivo local.
+
+def _fix_private_key(raw_json: str) -> str:
+    """
+    Repara la private_key PEM que puede llegar corrupta desde env vars.
+    Render maneja los \\n de formas impredecibles:
+      - A veces quedan como literal \\n (2 chars: backslash + n)
+      - A veces se convierten en saltos de linea reales
+      - A veces quedan como \\\\n (doble escape)
+    """
+    try:
+        cred = json.loads(raw_json)
+    except json.JSONDecodeError:
+        # Si falla el parse, posiblemente hay newlines reales rompiendo el JSON.
+        # Intentar reparar reemplazando newlines reales dentro del string
+        raw_json = raw_json.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
+        try:
+            cred = json.loads(raw_json)
+        except json.JSONDecodeError:
+            print("[Config] ERROR: FIREBASE_CREDENTIALS_JSON no es JSON valido")
+            return raw_json
+
+    if "private_key" in cred:
+        pk = cred["private_key"]
+        # Paso 1: normalizar todos los tipos de newline a \n real
+        pk = pk.replace("\\\\n", "\n")  # doble escape → newline real
+        pk = pk.replace("\\n", "\n")    # escape simple → newline real
+        pk = pk.replace("\r\n", "\n")   # CRLF → LF
+        pk = pk.replace("\r", "\n")     # CR → LF
+
+        # Paso 2: asegurar que empiece y termine correctamente
+        if not pk.startswith("-----BEGIN"):
+            pk = pk.strip()
+        if not pk.endswith("\n"):
+            pk += "\n"
+
+        cred["private_key"] = pk
+        print(f"[Config] Private key reparada: {len(pk)} chars, "
+              f"empieza con '{pk[:30]}...'")
+
+    return json.dumps(cred)
+
+
 _cred_json = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
 if _cred_json:
-    # Reparar private_key: Render puede romper los \n del PEM
-    import json as _json
-    try:
-        _cred_dict = _json.loads(_cred_json)
-        if "private_key" in _cred_dict:
-            # Asegurar que los \n sean saltos de linea reales
-            _cred_dict["private_key"] = _cred_dict["private_key"].replace("\\n", "\n")
-        _cred_json = _json.dumps(_cred_dict)
-    except _json.JSONDecodeError:
-        pass  # Si no parsea, intentar tal cual
+    _cred_json = _fix_private_key(_cred_json)
 
     # Escribir JSON temporal para que firebase_admin lo consuma
     _tmp = tempfile.NamedTemporaryFile(
@@ -57,6 +90,7 @@ if _cred_json:
     _tmp.write(_cred_json)
     _tmp.close()
     FIREBASE_CREDENTIALS_PATH = _tmp.name
+    print(f"[Config] Credenciales escritas en {FIREBASE_CREDENTIALS_PATH}")
 else:
     _default_cred = str(BASE_DIR / "server" / "firebase_config.json")
     FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", _default_cred)
