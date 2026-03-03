@@ -21,7 +21,10 @@ from server.generated import chat_pb2_grpc
 def start_grpc_background():
     """Inicia el gRPC server en background y retorna la instancia
     (sin bloquear; ideal para lanzarlo junto con Flask/gunicorn)."""
-    db = init_firebase(config.FIREBASE_CREDENTIALS_PATH)
+    db = init_firebase(
+        credentials_path=config.FIREBASE_CREDENTIALS_PATH,
+        credentials_dict=config.FIREBASE_CREDENTIALS_DICT,
+    )
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=20))
     chat_pb2_grpc.add_ChatServiceServicer_to_server(
         ChatServiceServicer(db), server

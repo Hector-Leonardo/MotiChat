@@ -6,14 +6,21 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 
-def init_firebase(credentials_path: str):
+def init_firebase(credentials_path: str = None, credentials_dict: dict = None):
     """
     Inicializa Firebase Admin SDK y retorna el cliente de Firestore.
+    Acepta un path a archivo JSON o un diccionario de credenciales.
     Retorna None si falla (el servidor funcionará sin persistencia).
     """
     try:
-        print(f"[Firebase] Cargando credenciales de: {credentials_path}")
-        cred = credentials.Certificate(credentials_path)
+        if credentials_dict:
+            print(f"[Firebase] Cargando credenciales desde dict (project: {credentials_dict.get('project_id', '?')})")
+            pk = credentials_dict.get('private_key', '')
+            print(f"[Firebase] PEM: {len(pk)} chars, empieza con '{pk[:30]}...', termina con '...{pk[-30:]}'")
+            cred = credentials.Certificate(credentials_dict)
+        else:
+            print(f"[Firebase] Cargando credenciales de archivo: {credentials_path}")
+            cred = credentials.Certificate(credentials_path)
         firebase_admin.initialize_app(cred)
         db = firestore.client()
         # Test rápido: intentar acceder a la colección

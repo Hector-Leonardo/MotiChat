@@ -136,19 +136,21 @@ if _cred_b64:
         print(f"[Config] ERROR decodificando Base64: {e}")
         _cred_json = ""
 
-if _cred_json:
-    # Si viene de Base64 ya esta limpio; si viene del env var plano, reparar
-    if not _cred_b64:
-        _cred_json = _fix_private_key(_cred_json)
+# Variable global: diccionario de credenciales (None = usar archivo local)
+FIREBASE_CREDENTIALS_DICT = None
 
-    # Escribir JSON temporal para que firebase_admin lo consuma
-    _tmp = tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False, dir=tempfile.gettempdir()
-    )
-    _tmp.write(_cred_json)
-    _tmp.close()
-    FIREBASE_CREDENTIALS_PATH = _tmp.name
-    print(f"[Config] Credenciales escritas en {FIREBASE_CREDENTIALS_PATH}")
+if _cred_json:
+    try:
+        _cred_dict = json.loads(_cred_json)
+        # Siempre reparar la private_key
+        if "private_key" in _cred_dict:
+            _cred_dict["private_key"] = _rebuild_pem(_cred_dict["private_key"])
+        FIREBASE_CREDENTIALS_DICT = _cred_dict
+        print(f"[Config] Credenciales cargadas como dict: project_id={_cred_dict.get('project_id', '?')}")
+    except json.JSONDecodeError as e:
+        print(f"[Config] ERROR parseando JSON de credenciales: {e}")
+
+    FIREBASE_CREDENTIALS_PATH = None  # No se usa archivo
 else:
     _default_cred = str(BASE_DIR / "server" / "firebase_config.json")
     FIREBASE_CREDENTIALS_PATH = os.getenv("FIREBASE_CREDENTIALS_PATH", _default_cred)
