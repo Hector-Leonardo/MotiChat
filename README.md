@@ -164,18 +164,6 @@ chat-grpc-firebase/
 ## Arquitectura
 
 ```
-┌─────────────┐     HTTP/JSON      ┌──────────────┐     gRPC Stream     ┌──────────────┐
-│  Navegador  │ ──────────────────> │  Flask        │ ──────────────────> │  gRPC Server │
-│  (Frontend) │ <────────────────── │  (web/)       │ <────────────────── │  (server/)   │
-└─────────────┘  POST /api/send    └──────────────┘  Bidirectional      └──────┬───────┘
-                 GET /api/messages                                              │
-                                                                         Firebase Admin
-                                                                              │
-                                                                     ┌──────────────┐
-                                                                     │   Firebase    │
-                                                                     │ Auth + Store  │
-                                                                     └──────────────┘
-```
 
 **Flujo de un mensaje:**
 1. El usuario se autentica (email/password o Google) en el frontend
