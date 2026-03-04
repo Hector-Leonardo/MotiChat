@@ -1,19 +1,10 @@
-"""
-web/routes.py — Rutas (endpoints) de Flask.
-"""
 
 from flask import render_template, request, jsonify
-
 import config
 from web.grpc_client import GrpcChatClient
-
-# Instancia global compartida del cliente gRPC
 grpc_client = GrpcChatClient()
 
-
 def register_routes(app):
-    """Registra todas las rutas en la aplicación Flask."""
-
     @app.route("/")
     def index():
         return render_template("index.html", firebase_config=config.FIREBASE_WEB)

@@ -1,13 +1,6 @@
-// ============================================================
-// app.js — Lógica del frontend: Auth + Chat + Polling
-// ============================================================
-
-// ── Firebase ────────────────────────────────────────────────
-// La config se inyecta desde el HTML via Jinja2 (variable global FIREBASE_CONFIG)
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth = firebase.auth();
 
-// ── Estado global ───────────────────────────────────────────
 let username = "";
 let pollingInterval = null;
 let lastMessageId = -1;
@@ -30,7 +23,6 @@ function getUserColor(name) {
     return userColorMap[name];
 }
 
-// ── Elementos DOM ───────────────────────────────────────────
 const authScreen        = document.getElementById("authScreen");
 const chatScreen        = document.getElementById("chatScreen");
 const verifyScreen      = document.getElementById("verifyScreen");
@@ -51,9 +43,6 @@ const setPwError        = document.getElementById("setPwError");
 let resendCooldown = 0;
 let cooldownTimer  = null;
 
-// ============================================================
-// AUTH — Tabs
-// ============================================================
 function switchTab(tab) {
     document.querySelectorAll(".auth-tab").forEach(t => t.classList.remove("active"));
     document.querySelector(`[data-tab="${tab}"]`).classList.add("active");
@@ -62,9 +51,6 @@ function switchTab(tab) {
     hideError();
 }
 
-// ============================================================
-// AUTH — Errores
-// ============================================================
 function showError(msg) {
     authError.textContent = msg;
     authError.classList.add("visible");
@@ -93,9 +79,6 @@ function getFirebaseErrorMessage(code) {
     return msgs[code] || "Error de autenticación. Inténtalo de nuevo";
 }
 
-// ============================================================
-// AUTH — Toggle password
-// ============================================================
 function togglePassword(inputId, btn) {
     const input = document.getElementById(inputId);
     if (input.type === "password") {
@@ -107,9 +90,6 @@ function togglePassword(inputId, btn) {
     }
 }
 
-// ============================================================
-// AUTH — Login
-// ============================================================
 async function handleLogin(e) {
     e.preventDefault();
     hideError();
@@ -134,9 +114,6 @@ async function handleLogin(e) {
     }
 }
 
-// ============================================================
-// AUTH — Register
-// ============================================================
 async function handleRegister(e) {
     e.preventDefault();
     hideError();
@@ -166,9 +143,6 @@ async function handleRegister(e) {
     }
 }
 
-// ============================================================
-// AUTH — Google
-// ============================================================
 function hasPasswordProvider(user) {
     return user.providerData.some(p => p.providerId === "password");
 }
@@ -203,9 +177,6 @@ async function handleGoogle() {
     }
 }
 
-// ============================================================
-// SET PASSWORD — Pantalla para vincular password a Google
-// ============================================================
 function showSetPasswordScreen(user) {
     pendingGoogleUser = user;
     authScreen.style.display        = "none";
@@ -286,9 +257,6 @@ function cancelSetPassword() {
     authScreen.style.display = "flex";
 }
 
-// ============================================================
-// VERIFY — Pantalla de verificación
-// ============================================================
 function showVerifyScreen(user) {
     authScreen.style.display   = "none";
     chatScreen.style.display   = "none";
@@ -375,9 +343,6 @@ function backToLogin() {
     authScreen.style.display   = "flex";
 }
 
-// ============================================================
-// AUTH — Logout
-// ============================================================
 async function handleLogout() {
     try {
         if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
@@ -419,9 +384,6 @@ async function handleLogout() {
     }
 }
 
-// ============================================================
-// AUTH — Persistent state
-// ============================================================
 auth.onAuthStateChanged((user) => {
     if (isManualAuth) return;  // login/register/google manual: ya se maneja
     if (user) {
@@ -438,9 +400,6 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// ============================================================
-// CHAT — Entrar
-// ============================================================
 function enterChat(user) {
     username = user.displayName || user.email.split("@")[0];
     authScreen.style.display = "none";
@@ -458,9 +417,6 @@ function enterChat(user) {
     messageInput.focus();
 }
 
-// ============================================================
-// CHAT — Enviar
-// ============================================================
 messageInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
 
 async function sendMessage() {
@@ -477,9 +433,6 @@ async function sendMessage() {
     } catch { addSystemMessage("Sin conexión"); }
 }
 
-// ============================================================
-// CHAT — Polling
-// ============================================================
 function startPolling() {
     if (pollingInterval) clearInterval(pollingInterval);
     pollingInterval = setInterval(async () => {
@@ -510,9 +463,6 @@ function updateStatus(ok) {
     statusText.textContent = ok ? "en línea" : "desconectado";
 }
 
-// ============================================================
-// CHAT — Mensajes
-// ============================================================
 function addMessage(user, message, timestamp) {
     const div = document.createElement("div");
     const isMine = user === username;

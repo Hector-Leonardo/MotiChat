@@ -1,3 +1,99 @@
+# MotiChat — Chat web en tiempo real (Python + gRPC + Firebase)
+
+Este proyecto es un chat web en tiempo real llamado **MotiChat**, construido con Python, gRPC y Firebase. Permite autenticación completa (registro, login, Google, verificación de email), chat en tiempo real usando streaming bidireccional gRPC, y almacenamiento de mensajes en Firebase Firestore. El frontend es una app web con Flask y una interfaz moderna tipo Telegram.
+
+---
+
+## ¿Qué hace este proyecto?
+
+- Permite a los usuarios registrarse, iniciar sesión (email/contraseña o Google) y verificar su email.
+- Los usuarios pueden chatear en tiempo real; todos los mensajes se transmiten a todos los clientes conectados.
+- Los mensajes se almacenan en Firebase Firestore y se recupera el historial reciente al conectarse.
+- El backend está dividido en dos partes: un servidor gRPC (maneja la lógica del chat y la persistencia) y un servidor Flask (sirve la web y actúa como puente HTTP-gRPC).
+- El frontend es responsivo y moderno, con autenticación y chat en vivo.
+
+---
+
+## ¿Cómo ejecutarlo correctamente?
+
+1. **Instala Python 3.8+** y asegúrate de tener conexión a internet.
+2. **Clona el repositorio y entra a la carpeta:**
+     ```bash
+     cd chat-grpc-firebase
+     ```
+3. **Instala las dependencias:**
+     ```bash
+     pip install -r requirements.txt
+     ```
+4. **Configura las variables de entorno:**
+     
+     ### Configurar Firebase
+
+     #### Firebase Admin SDK (servidor)
+
+     1. Ve a [Firebase Console](https://console.firebase.google.com/) -> tu proyecto
+     2. **Configuracion** -> **Cuentas de servicio** -> **Generar nueva clave privada**
+     3. Renombra el archivo descargado a `firebase_config.json`
+     4. Colocalo en `server/firebase_config.json`
+
+     #### Firebase Auth (frontend)
+
+     1. En Firebase Console -> **Authentication** -> **Metodo de acceso**
+     2. Habilita **Correo electronico/contrasena** y **Google**
+     3. Copia los valores de **Configuracion del SDK web** al archivo `.env`
+
+     #### Firestore Database
+
+     1. En Firebase Console -> **Firestore Database** -> **Crear base de datos**
+     2. Selecciona **Modo de prueba** y tu ubicacion preferida
+     
+5. **Genera el código gRPC:**
+     ```bash
+     scripts\generate_proto.bat
+     ```
+6. **Inicia el servidor Flask en el puerto 5000:**
+     - En CMD:
+       ```bash
+       set FLASK_APP=web/main.py
+       flask run --host=0.0.0.0 --port=5000
+       ```
+     - En PowerShell:
+       ```bash
+       $env:FLASK_APP="web/main.py"
+       flask run --host=0.0.0.0 --port=5000
+       ```
+7. **En otra terminal, inicia ngrok para exponer el servidor:**
+     ```bash
+     ngrok http 5000
+     ```
+8. **Abre la URL pública que te da ngrok** para acceder a la app desde internet.
+
+---
+
+# Cómo correr el servidor y exponerlo con ngrok
+
+1. Instala las dependencias:
+     ```bash
+     pip install -r requirements.txt
+     ```
+
+2. Inicia el servidor Flask en el puerto 5000:
+     ```bash
+     set FLASK_APP=web/main.py
+     flask run --host=0.0.0.0 --port=5000
+     ```
+     > En PowerShell usa `$env:FLASK_APP="web/main.py"` en vez de `set FLASK_APP=...`.
+
+3. En otra terminal, inicia ngrok apuntando al puerto 5000:
+     ```bash
+     ngrok http 5000
+     ```
+
+4. Usa la URL pública que te da ngrok para acceder a tu app desde internet.
+
+**Notas:**
+- Asegúrate de que el servidor Flask esté corriendo antes de iniciar ngrok.
+- Si cambias el puerto, también debes cambiarlo en el comando de ngrok.
 # MotiChat — Python + gRPC + Firebase
 
 Chat web en tiempo real con **autenticacion completa** (registro, login, Google, verificacion de email), construido con **Python**, **gRPC** (streaming bidireccional), **Firebase** (Auth + Firestore) y **Flask**.
@@ -37,7 +133,6 @@ chat-grpc-firebase/
 │       └── index.html              # HTML (estructura solamente)
 │
 ├── scripts/                        # Utilidades
-│   ├── clear_db.py                 # Limpia todos los mensajes de Firestore
 │   └── generate_proto.bat          # Genera codigo Python desde chat.proto
 │
 ├── .env                            # Variables de entorno (no commitear)
@@ -62,77 +157,9 @@ chat-grpc-firebase/
 
 ---
 
-## Instalacion
 
-### 1. Requisitos Previos
 
-- **Python 3.8+** ([python.org](https://python.org))
-- Conexion a Internet (para Firebase)
-
-### 2. Instalar Dependencias
-
-```bash
-cd chat-grpc-firebase
-pip install -r requirements.txt
 ```
-
-### 3. Configurar Variables de Entorno
-
-```bash
-copy .env.example .env
-```
-
-Edita `.env` con tus credenciales reales de Firebase.
-
-### 4. Configurar Firebase
-
-#### Firebase Admin SDK (servidor)
-
-1. Ve a [Firebase Console](https://console.firebase.google.com/) -> tu proyecto
-2. **Configuracion** -> **Cuentas de servicio** -> **Generar nueva clave privada**
-3. Renombra el archivo descargado a `firebase_config.json`
-4. Colocalo en `server/firebase_config.json`
-
-#### Firebase Auth (frontend)
-
-1. En Firebase Console -> **Authentication** -> **Metodo de acceso**
-2. Habilita **Correo electronico/contrasena** y **Google**
-3. Copia los valores de **Configuracion del SDK web** al archivo `.env`
-
-#### Firestore Database
-
-1. En Firebase Console -> **Firestore Database** -> **Crear base de datos**
-2. Selecciona **Modo de prueba** y tu ubicacion preferida
-
-> **Nunca commitees** `firebase_config.json` ni `.env`. Ya estan en `.gitignore`.
-
-### 5. Generar Codigo gRPC
-
-```bash
-scripts\generate_proto.bat
-```
-
----
-
-## Ejecucion
-
-Necesitas **2 terminales** desde la raiz del proyecto:
-
-### Terminal 1 — Servidor gRPC
-
-```bash
-python -m server.main
-```
-
-### Terminal 2 — Servidor Web (Flask)
-
-```bash
-python -m web.main
-```
-
-Abre **http://localhost:5000** en tu navegador.
-
----
 
 ## Arquitectura
 
@@ -199,13 +226,7 @@ Abre **http://localhost:5000** en tu navegador.
 # Generar codigo gRPC desde chat.proto
 scripts\generate_proto.bat
 
-# Limpiar todos los mensajes de Firestore
-python -m scripts.clear_db
 ```
-
----
-
-## Solucion de Problemas
 
 | Error | Causa | Solucion |
 |---|---|---|
@@ -216,7 +237,3 @@ python -m scripts.clear_db
 | `Address already in use` | Puerto ocupado | `netstat -ano \| findstr 50051` -> `taskkill /PID <PID> /F` |
 
 ---
-
-## Licencia
-
-Proyecto educativo de codigo abierto. Usalo libremente.
