@@ -14,8 +14,15 @@ def register_routes(app):
         data = request.get_json()
         if not data or "user" not in data or "message" not in data:
             return jsonify({"error": "Faltan campos 'user' y 'message'"}), 400
+        # Si no está conectado, intenta reconectar automáticamente
         if not grpc_client.connected:
-            return jsonify({"error": "No conectado al servidor gRPC"}), 503
+            try:
+                grpc_client.connect()
+                time.sleep(0.5)  # Espera breve para reconectar
+            except Exception as e:
+                return jsonify({"error": f"No conectado al servidor gRPC: {e}"}), 503
+            if not grpc_client.connected:
+                return jsonify({"error": "No conectado al servidor gRPC"}), 503
         result = grpc_client.send_message(data["user"], data["message"])
         return jsonify(result)
 

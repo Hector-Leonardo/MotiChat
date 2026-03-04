@@ -9,6 +9,10 @@ firebase-admin>=6.5.0         # Firebase Admin SDK para Python
 cryptography>=42.0.0          # Soporte criptografico (RSA keys) - requerido por google-auth
 flask>=3.0.0                  # Servidor web para servir el frontend
 flask-cors>=5.0.0             # Permite peticiones cross-origin (CORS)
-protobuf>=5.26.0              # Serialización de mensajes Protocol Buffers
+# protobuf>=5.26.0              # Serialización de mensajes Protocol Buffers (ELIMINADA POR CONFLICTO)
 python-dotenv>=1.0.0          # Carga variables de entorno desde .env
 gunicorn>=22.0.0              # Servidor WSGI para producción (Render)
+
+# Forzar versiones compatibles para Firestore y protobuf
+google-cloud-firestore==2.11.1
+protobuf==4.25.3

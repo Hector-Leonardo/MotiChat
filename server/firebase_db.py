@@ -8,12 +8,15 @@ def init_firebase(credentials_path: str = None, credentials_dict: dict = None):
     try:
         import os
         if not credentials_path or not os.path.isfile(credentials_path):
+            print(f"[Firebase] Archivo de credenciales no encontrado: {credentials_path}", flush=True)
             return None
         cred = credentials.Certificate(credentials_path)
         firebase_admin.initialize_app(cred)
         db = firestore.client()
+        print("[Firebase] Inicialización exitosa", flush=True)
         return db
     except Exception as e:
+        print(f"[Firebase] Error al inicializar Firebase: {e}", flush=True)
         return None
 
 

@@ -52,16 +52,21 @@ Este proyecto es un chat web en tiempo real llamado **MotiChat**, construido con
      scripts\generate_proto.bat
      ```
 6. **Inicia el servidor Flask en el puerto 5000:**
-     - En CMD:
-       ```bash
-       set FLASK_APP=web/main.py
-       flask run --host=0.0.0.0 --port=5000
-       ```
-     - En PowerShell:
-       ```bash
-       $env:FLASK_APP="web/main.py"
-       flask run --host=0.0.0.0 --port=5000
-       ```
+      - **Primero, inicia el servidor gRPC (backend) en una terminal:**
+           ```bash
+           python -m server.main
+           ```
+      - Luego, en otra terminal, inicia Flask:
+           - En CMD:
+                ```bash
+                set FLASK_APP=web/main.py
+                flask run --host=0.0.0.0 --port=5000
+                ```
+           - En PowerShell:
+                ```bash
+                $env:FLASK_APP="web/main.py"
+                flask run --host=0.0.0.0 --port=5000
+                ```
 7. **En otra terminal, inicia ngrok para exponer el servidor:**
      ```bash
      ngrok http 5000
@@ -69,6 +74,37 @@ Este proyecto es un chat web en tiempo real llamado **MotiChat**, construido con
 8. **Abre la URL pública que te da ngrok** para acceder a la app desde internet.
 
 ---
+
+## Instrucciones adicionales y recomendaciones importantes
+
+1. **Variables de entorno:**
+     - Crea un archivo `.env` en la raíz del proyecto.
+     - Llena los valores de Firebase (`FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, etc.) con los datos de tu proyecto en Firebase Console.
+     - Verifica que la ruta de `FIREBASE_CREDENTIALS_PATH` apunte correctamente a `server/firebase_config.json`.
+
+2. **Generar código gRPC:**
+     - Antes de correr el servidor, ejecuta siempre `scripts\generate_proto.bat` para evitar errores de importación de `chat_pb2` o `chat_pb2_grpc`.
+     - Si ves errores de `ModuleNotFoundError: grpc` o similares, ejecuta de nuevo `pip install -r requirements.txt`.
+
+3. **Iniciar ambos servidores:**
+     - El servidor gRPC (backend) debe estar corriendo antes de iniciar Flask.
+       Ejemplo:
+       ```bash
+       python -m server.main
+       ```
+     - Luego, en otra terminal, inicia Flask como indica el README.
+
+4. **Ngrok:**
+     - Ngrok solo es necesario si quieres exponer la app a internet. Si solo pruebas localmente, puedes omitirlo.
+
+5. **Dependencias:**
+     - Usa Python 3.8 o superior, pero evita versiones incompatibles con los paquetes listados.
+     - Si usas un entorno virtual, actívalo antes de instalar dependencias.
+
+6. **Errores comunes:**
+     - Si ves errores de credenciales, revisa que `server/firebase_config.json` exista y sea válido.
+     - Si el puerto 50051 o 5000 está ocupado, cámbialo en el `.env` y en los comandos de inicio.
+
 
 # Cómo correr el servidor y exponerlo con ngrok
 
@@ -82,8 +118,6 @@ Este proyecto es un chat web en tiempo real llamado **MotiChat**, construido con
      set FLASK_APP=web/main.py
      flask run --host=0.0.0.0 --port=5000
      ```
-     > En PowerShell usa `$env:FLASK_APP="web/main.py"` en vez de `set FLASK_APP=...`.
-
 3. En otra terminal, inicia ngrok apuntando al puerto 5000:
      ```bash
      ngrok http 5000
