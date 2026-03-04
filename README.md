@@ -155,14 +155,6 @@ chat-grpc-firebase/
 - **UI profesional**: Diseno dark theme estilo Telegram, responsive
 - **Codigo modular**: Separacion clara de responsabilidades por paquetes
 
----
-
-
-
-```
-
-## Arquitectura
-
 ```
 
 **Flujo de un mensaje:**
